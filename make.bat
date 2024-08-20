@@ -1,9 +1,9 @@
 @echo off
 
 set CPP_INC=%MG_INCLUDE%
-set CPP_FLAGS=/W4 /Zi /EHsc /wd4201 /wd4996 /wd4505 /MP /I %CPP_INC%
+set CPP_FLAGS=/W4 /Zi /EHsc /wd4201 /wd4996 /wd4505 /MP /I %CPP_INC% /I ..\inc
 set CPP_SRC=..\src\main.cpp
-set CPP_LIBS=d3d11.lib d3dcompiler.lib user32.lib imgui_d3d11.lib
+set CPP_LIBS=d3d12.lib dxgi.lib d3dcompiler.lib user32.lib imgui_d3d12.lib
 
 mkdir bin
 pushd bin\
