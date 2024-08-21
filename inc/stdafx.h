@@ -46,6 +46,7 @@ ID3D12GraphicsCommandList		*command_list;
 ID3D12Fence						*fence;
 HANDLE							fence_event;
 UINT64							fence_values[FRAMEBUFFER_COUNT] = {};
+UINT							backbuffer_index;
 D3D12_VIEWPORT					viewport = {};
 D3D12_RECT						scissor_rect = {};
 

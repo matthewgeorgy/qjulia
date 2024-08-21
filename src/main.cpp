@@ -2,6 +2,7 @@
 
 
 LRESULT CALLBACK wndproc(HWND, UINT, WPARAM, LPARAM);
+void move_to_next_frame();
 
 int
 main(void)
@@ -238,6 +239,32 @@ main(void)
 			TranslateMessage(&msg);
 			DispatchMessage(&msg);
 		}
+		else
+		{
+			const FLOAT clear_color[] = { 0.f, 0.2f, 0.4f, 1.f };
+			ID3D12CommandList *cmdlists[] = { command_list };
+
+			hr = command_allocators[backbuffer_index]->Reset();
+			hr = command_list->Reset(command_allocators[backbuffer_index], nullptr);
+
+			rtv_handle.ptr = rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * rtv_descriptor_size;
+			dsv_handle.ptr = dsv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * dsv_descriptor_size;
+
+			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
+
+			command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &dsv_handle);
+			command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
+			command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
+
+			command_list->Close();
+
+			command_queue->ExecuteCommandLists(1, cmdlists);
+			hr = swapchain->Present(0, 0);
+
+			move_to_next_frame();
+		}
 	}
 
 	return (0);
@@ -275,5 +302,24 @@ wndproc(HWND hwnd,
 	}
 
 	return (result);
+}
+
+void 
+move_to_next_frame()
+{
+	UINT64		current_fence_value = fence_values[backbuffer_index];
+
+
+	DX_CHECK(command_queue->Signal(fence, current_fence_value));
+
+	backbuffer_index = swapchain->GetCurrentBackBufferIndex();
+
+	if (fence->GetCompletedValue() < fence_values[backbuffer_index])
+	{
+		DX_CHECK(fence->SetEventOnCompletion(fence_values[backbuffer_index], fence_event));
+		WaitForSingleObject(fence_event, INFINITE);
+	}
+
+	fence_values[backbuffer_index] = current_fence_value + 1;
 }
 
