@@ -18,7 +18,7 @@ cbuffer params : register(b0)
 	float		epsilon;
 	float		zoom;
 	int			iterations;
-	/* float4x4	rotation; */
+	float4x4	rotation;
 };
 
 quat_t		quat_mul(quat_t q1, quat_t q2);
@@ -38,7 +38,7 @@ main(ps_in input) : SV_TARGET
 				half,
 				position;
 	float		scale;
-	float3		light,
+	float4		light,
 				eye,
 				ray;
 	float3		ro,
@@ -51,18 +51,18 @@ main(ps_in input) : SV_TARGET
 	half = float2(0.5f, 0.5f);
 	position = (coord.xy - half * size) / scale * BOUNDING_RADIUS_2 * (1 / zoom);
 
-  	light = float3(1.5f, 0.5f, 4.0f);
-  	eye   = float3(0.0f, 0.0f, 4.0f);
-  	ray   = float3(position.x, position.y, 0.0f);
+  	light = float4(1.5f, 0.5f, 4.0f, 1.0f);
+  	eye   = float4(0.0f, 0.0f, 4.0f, 1.0f);
+  	ray   = float4(position.x, position.y, 0.0f, 1.0f);
 
-	/* light = mul(light, rotation); */
-	/* eye = mul(eye, rotation); */
-	/* ray = mul(ray, rotation); */
+	light = mul(light, rotation);
+	eye = mul(eye, rotation);
+	ray = mul(ray, rotation);
 
-	ro = eye;
-	rd = ray - ro;
+	ro = eye.xyz;
+	rd = ray.xyz - ro;
 
-	float4 color = qjulia(ro, rd, mu, epsilon, eye, light, self_shadow, iterations);
+	float4 color = qjulia(ro, rd, mu, epsilon, eye.xyz, light.xyz, self_shadow, iterations);
 
 	return (color);
 }

@@ -371,6 +371,9 @@ main(void)
 	params.epsilon = 0.003f;
 	params.zoom = 1.0f;
 	params.iterations = 10;
+	LONG cols = GetSystemMetrics(SM_CXSCREEN);
+	LONG rows = GetSystemMetrics(SM_CYSCREEN);
+	SetCursorPos(cols / 2, rows / 2);
 
 	//////////////////////////////////////////////////////////////////////////
 	// ImGui init
@@ -390,6 +393,7 @@ main(void)
 	ImGui_ImplDX12_Init(device, FRAMEBUFFER_COUNT, DXGI_FORMAT_R8G8B8A8_UNORM, imgui_heap,
 			imgui_heap->GetCPUDescriptorHandleForHeapStart(),
 			imgui_heap->GetGPUDescriptorHandleForHeapStart());
+	ImGuiIO &io = ImGui::GetIO();
 
 	//////////////////////////////////////////////////////////////////////////
 	// Main loop
@@ -416,18 +420,21 @@ main(void)
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 
+			ImGui::ShowDemoWindow();
 			ImGui::Begin("Controls");
 				ImGui::SliderFloat4("Mu", &params.mu.x, -1, 1, "%0.5f");
 				ImGui::Checkbox("Self Shadow", (bool *)&params.self_shadow);
 				ImGui::SliderFloat("Epsilon", &params.epsilon, 0.0001f, 0.01f, "%0.5f");
 				ImGui::SliderFloat("Zoom", &params.zoom, 0, 2, "%0.4f");
 				ImGui::SliderInt("Iterations", &params.iterations, 5, 25);
+				ImGui::Text("io.WantCaptureMouse: %d", io.WantCaptureMouse);
             ImGui::End();
-
-			CopyMemory(params_ptrs[backbuffer_index], &params, sizeof(params));
-	
 			ImGui::Render();
 
+			params.rotation = trackball.GetRotationMatrix();
+			CopyMemory(params_ptrs[backbuffer_index], &params, sizeof(params));
+
+			// -------- Update pipeline -------- //
 			hr = command_allocators[backbuffer_index]->Reset();
 			hr = command_list->Reset(command_allocators[backbuffer_index], pipeline);
 
@@ -435,10 +442,11 @@ main(void)
 			dsv_handle.ptr = dsv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * dsv_descriptor_size;
 
 			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
-
 			command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &dsv_handle);
 			command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
 			command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+			// -------- Draw -------- //
 			command_list->SetGraphicsRootSignature(root_signature);
 			command_list->SetGraphicsRootConstantBufferView(0, params_buffer[backbuffer_index]->GetGPUVirtualAddress());
 			command_list->RSSetViewports(1, &viewport);
@@ -450,10 +458,10 @@ main(void)
 
 			command_list->SetDescriptorHeaps(1, &imgui_heap);
 			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), command_list);
-
 			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
-
 			command_list->Close();
+
+			// -------- Present -------- //
 			command_queue->ExecuteCommandLists(1, cmdlists);
 			hr = swapchain->Present(0, 0);
 
@@ -466,10 +474,11 @@ main(void)
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-LRESULT CALLBACK
-wndproc(HWND hwnd,
-		UINT msg,
-		WPARAM wparam,
+#if 0
+LRESULT CALLBACK		
+wndproc(HWND hwnd, 
+		UINT msg, 
+		WPARAM wparam, 
 		LPARAM lparam)
 {
 	LRESULT		result = 0;
@@ -477,11 +486,17 @@ wndproc(HWND hwnd,
 
 	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
 	{
-		return (result);
+		return (1);
 	}
 
 	switch (msg)
 	{
+		case WM_MOUSEMOVE:
+		{
+			ImGuiIO &io = ImGui::GetIO();
+			printf("%d\n", io.WantCaptureMouse);
+		} break;
+
 		case WM_KEYDOWN:
 		{
 			if (wparam == VK_ESCAPE)
@@ -491,6 +506,10 @@ wndproc(HWND hwnd,
 		} break;
 
 		case WM_CLOSE:
+		{
+			PostQuitMessage(0);
+		} break;
+
 		case WM_DESTROY:
 		{
 			PostQuitMessage(0);
@@ -504,6 +523,79 @@ wndproc(HWND hwnd,
 
 	return (result);
 }
+#else
+LRESULT CALLBACK
+wndproc(HWND hwnd,
+        UINT msg,
+        WPARAM wparam,
+        LPARAM lparam)
+{
+    LRESULT         result = 0;
+	static b32		lbdown = FALSE; 
+
+
+	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
+	{
+		return (result);
+	}
+
+    switch (msg)
+    {
+		case WM_LBUTTONDOWN:
+		case WM_LBUTTONUP:
+		case WM_MOUSEMOVE:
+		{
+			ImGuiIO &io = ImGui::GetIO();
+
+			if (!io.WantCaptureMouse)
+			{
+				LONG x = GET_X_LPARAM(lparam); 
+				LONG y = GET_Y_LPARAM(lparam); 
+
+				if (msg == WM_LBUTTONDOWN && !lbdown)
+				{
+					trackball.DragStart(x, y, SCR_WIDTH, SCR_HEIGHT);
+					lbdown = TRUE;
+				}
+				if (msg == WM_MOUSEMOVE && lbdown)
+				{
+					trackball.DragMove(x, y, SCR_WIDTH, SCR_HEIGHT);
+				}
+				if (msg == WM_LBUTTONUP)
+				{
+					trackball.DragEnd();
+					lbdown = FALSE;
+				}
+			}
+		} break;
+
+        case WM_KEYDOWN:
+        {
+            if (wparam == VK_ESCAPE)
+            {
+                PostQuitMessage(0);
+            }
+        } break;
+
+        case WM_CLOSE:
+        {
+            DestroyWindow(hwnd);
+        } break;
+
+        case WM_DESTROY:
+        {
+            PostQuitMessage(0);
+        } break;
+
+        default:
+        {
+            result = DefWindowProc(hwnd, msg, wparam, lparam);
+        } break;
+    }
+
+    return (result);
+}
+#endif
 
 void
 move_to_next_frame()

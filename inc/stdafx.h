@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <windowsx.h>
 #include <d3dx12.h>
 #include <d3dcompiler.h>
 #include <dxgi1_5.h>
@@ -10,6 +11,7 @@
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx12.h>
+#include <trackball.h>
 
 #define SCR_WIDTH				1280
 #define SCR_HEIGHT 				960
@@ -38,6 +40,7 @@ typedef struct _TAG_qjulia_params
 	f32			zoom;
 	s32			iterations;
 	f32			_pad0[2];
+	mat3_t		rotation;
 } qjulia_params_t;
 
 UINT							cbv_descriptor_size;
@@ -76,4 +79,5 @@ D3D12_INDEX_BUFFER_VIEW			ib_view;
 qjulia_params_t					params;
 ID3D12Buffer					*params_buffer[FRAMEBUFFER_COUNT];
 BYTE							*params_ptrs[FRAMEBUFFER_COUNT];
+TrackBall						trackball;
 
