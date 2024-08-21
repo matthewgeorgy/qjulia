@@ -49,4 +49,8 @@ UINT64							fence_values[FRAMEBUFFER_COUNT] = {};
 UINT							backbuffer_index;
 D3D12_VIEWPORT					viewport = {};
 D3D12_RECT						scissor_rect = {};
+ID3D12RootSignature				*root_signature;
+ID3D12Buffer					*vb;
+D3D12_VERTEX_BUFFER_VIEW		vb_view;
+ID3D12PipelineState				*pipeline;
 

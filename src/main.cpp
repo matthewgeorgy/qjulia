@@ -225,6 +225,100 @@ main(void)
 	scissor_rect.bottom = SCR_HEIGHT;
 
 	//////////////////////////////////////////////////////////////////////////
+	// Shader setup
+
+	D3D12_SHADER_BYTECODE		vs_code,
+								ps_code;
+	ID3DBlob					*vs_blob;
+	ID3DBlob					*ps_blob;
+
+
+	hr = D3DReadFileToBlob(L"bin/julia_vs.cso", &vs_blob);
+	hr = D3DReadFileToBlob(L"bin/julia_ps.cso", &ps_blob);
+
+	vs_code.BytecodeLength = vs_blob->GetBufferSize();
+	vs_code.pShaderBytecode = vs_blob->GetBufferPointer();
+	ps_code.BytecodeLength = ps_blob->GetBufferSize();
+	ps_code.pShaderBytecode = ps_blob->GetBufferPointer();
+
+	//////////////////////////////////////////////////////////////////////////
+	// Root signature
+
+	ID3DBlob						*signature;
+	D3D12_ROOT_SIGNATURE_DESC		root_signature_desc = {};
+
+
+	root_signature_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+	DX_CHECK(D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));
+	DX_CHECK(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), PPV_ARGS(&root_signature)));
+
+	//////////////////////////////////////////////////////////////////////////
+	// Vertex buffers
+
+	void		*ptr;
+	f32			vertices[] =
+	{
+		 0.0f,  0.5f, 0.5f,
+		 0.5f, -0.5f, 0.5f,
+		-0.5f, -0.5f, 0.5f,
+	};	
+
+
+	hr = device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(vertices)),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		PPV_ARGS(&vb));
+
+	vb->Map(0, nullptr, &ptr);
+		CopyMemory(ptr, vertices, sizeof(vertices));
+	vb->Unmap(0, nullptr);
+
+	vb_view.BufferLocation = vb->GetGPUVirtualAddress();
+	vb_view.SizeInBytes = sizeof(vertices);
+	vb_view.StrideInBytes = 3 * sizeof(f32);
+
+	//////////////////////////////////////////////////////////////////////////
+	// Input layout
+
+	D3D12_INPUT_ELEMENT_DESC		element_desc[1] = {};
+	D3D12_INPUT_LAYOUT_DESC			input_layout = {};
+
+
+	element_desc[0].SemanticName = "POSITION";
+	element_desc[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	element_desc[0].InputSlot = 0;
+	element_desc[0].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
+
+	input_layout.NumElements = _countof(element_desc);
+	input_layout.pInputElementDescs = element_desc;
+
+	//////////////////////////////////////////////////////////////////////////
+	// Pipeline setup
+
+	D3D12_GRAPHICS_PIPELINE_STATE_DESC		pipeline_desc = {};
+
+
+	pipeline_desc.InputLayout = input_layout;
+	pipeline_desc.pRootSignature = root_signature;
+	pipeline_desc.VS = vs_code;
+	pipeline_desc.PS = ps_code;
+	pipeline_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	pipeline_desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+	pipeline_desc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pipeline_desc.SampleDesc = { 1, 0 };
+	pipeline_desc.SampleMask = 0xFFFFFFFF;
+	pipeline_desc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	pipeline_desc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	pipeline_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	pipeline_desc.NumRenderTargets = 1;
+
+	DX_CHECK(device->CreateGraphicsPipelineState(&pipeline_desc, PPV_ARGS(&pipeline)));
+
+	//////////////////////////////////////////////////////////////////////////
 	// Main loop
 
 	for (;;)
@@ -245,7 +339,7 @@ main(void)
 			ID3D12CommandList *cmdlists[] = { command_list };
 
 			hr = command_allocators[backbuffer_index]->Reset();
-			hr = command_list->Reset(command_allocators[backbuffer_index], nullptr);
+			hr = command_list->Reset(command_allocators[backbuffer_index], pipeline);
 
 			rtv_handle.ptr = rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * rtv_descriptor_size;
 			dsv_handle.ptr = dsv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * dsv_descriptor_size;
@@ -255,11 +349,16 @@ main(void)
 			command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &dsv_handle);
 			command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
 			command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+			command_list->SetGraphicsRootSignature(root_signature);
+			command_list->RSSetViewports(1, &viewport);
+			command_list->RSSetScissorRects(1, &scissor_rect);
+			command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			command_list->IASetVertexBuffers(0, 1, &vb_view);
+			command_list->DrawInstanced(3, 1, 0, 0);
 
 			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 			command_list->Close();
-
 			command_queue->ExecuteCommandLists(1, cmdlists);
 			hr = swapchain->Present(0, 0);
 
@@ -304,7 +403,7 @@ wndproc(HWND hwnd,
 	return (result);
 }
 
-void 
+void
 move_to_next_frame()
 {
 	UINT64		current_fence_value = fence_values[backbuffer_index];
