@@ -28,6 +28,18 @@ typedef ID3D12Resource			ID3D12Texture1D;
 typedef ID3D12Resource			ID3D12Texture2D;
 typedef ID3D12Resource			ID3D12Texture3D;
 
+typedef struct _TAG_qjulia_params
+{
+	vec4_t		mu;
+	s32			width,
+				height;
+	b32			self_shadow;
+	f32			epsilon;
+	f32			zoom;
+	s32			iterations;
+	f32			_pad0[2];
+} qjulia_params_t;
+
 UINT							cbv_descriptor_size;
 UINT							srv_descriptor_size;
 UINT							uav_descriptor_size;
@@ -52,10 +64,16 @@ UINT64							fence_values[FRAMEBUFFER_COUNT] = {};
 UINT							backbuffer_index;
 D3D12_VIEWPORT					viewport = {};
 D3D12_RECT						scissor_rect = {};
+
 ID3D12RootSignature				*root_signature;
+ID3D12PipelineState				*pipeline;
+
 ID3D12Buffer					*vb;
 D3D12_VERTEX_BUFFER_VIEW		vb_view;
 ID3D12Buffer					*ib;
 D3D12_INDEX_BUFFER_VIEW			ib_view;
-ID3D12PipelineState				*pipeline;
+
+qjulia_params_t					params;
+ID3D12Buffer					*params_buffer[FRAMEBUFFER_COUNT];
+BYTE							*params_ptrs[FRAMEBUFFER_COUNT];
 

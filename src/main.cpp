@@ -245,9 +245,18 @@ main(void)
 	// Root signature
 
 	ID3DBlob						*signature;
+	D3D12_ROOT_PARAMETER			root_parameters[1] = {};
+	D3D12_ROOT_DESCRIPTOR			params_descriptor = {};
 	D3D12_ROOT_SIGNATURE_DESC		root_signature_desc = {};
 
 
+	params_descriptor.ShaderRegister = 0;
+
+	root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	root_parameters[0].Descriptor = params_descriptor;
+
+	root_signature_desc.NumParameters = _countof(root_parameters);
+	root_signature_desc.pParameters = root_parameters;
 	root_signature_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
 
 	DX_CHECK(D3D12SerializeRootSignature(&root_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));
@@ -340,6 +349,30 @@ main(void)
 	DX_CHECK(device->CreateGraphicsPipelineState(&pipeline_desc, PPV_ARGS(&pipeline)));
 
 	//////////////////////////////////////////////////////////////////////////
+	// Params buffer
+
+	for (u32 i = 0; i < FRAMEBUFFER_COUNT; i++)
+	{
+		hr = device->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+			D3D12_HEAP_FLAG_NONE,
+			&CD3DX12_RESOURCE_DESC::Buffer(sizeof(qjulia_params_t)),
+			D3D12_RESOURCE_STATE_GENERIC_READ,
+			nullptr,
+			PPV_ARGS(&params_buffer[i]));
+
+		hr = params_buffer[i]->Map(0, nullptr, (void **)&params_ptrs[i]);
+	}
+
+	params.mu = vec4(-0.278f, -0.479f, -0.231f, 0.235f);
+	params.width = SCR_WIDTH;
+	params.height = SCR_HEIGHT;
+	params.self_shadow = TRUE;
+	params.epsilon = 0.003f;
+	params.zoom = 1.0f;
+	params.iterations = 10;
+
+	//////////////////////////////////////////////////////////////////////////
 	// ImGui init
 
 	D3D12_DESCRIPTOR_HEAP_DESC		imgui_heap_desc = {};
@@ -383,10 +416,32 @@ main(void)
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 
-			ImGui::Begin("blah");
-				ImGui::Text("blyat %f", clear_color[2]);
-			ImGui::End();
+			ImGui::Begin("Controls");
+				ImGui::SliderFloat4("Mu", &params.mu.x, -1, 1, "%0.5f");
+				ImGui::Checkbox("Self Shadow", (bool *)&params.self_shadow);
+				ImGui::SliderFloat("Epsilon", &params.epsilon, 0.0001f, 0.01f, "%0.5f");
+				ImGui::SliderFloat("Zoom", &params.zoom, 0, 2, "%0.4f");
+				ImGui::SliderInt("Iterations", &params.iterations, 5, 25);
+            ImGui::End();
 
+			CopyMemory(params_ptrs[backbuffer_index], &params, sizeof(params));
+
+			/* params.rotation = trackball.GetRotationMatrix(); */
+			/* context->UpdateSubresource(params_buffer, 0, 0, &params, 0, 0); */
+			/* context->PSSetConstantBuffers(0, 1, &params_buffer); */
+
+			/* ImGui::Begin("Rotation matrix"); */
+			/* 	ImGui::Text("%f %f %f\n%f %f %f\n%f %f %f", params.rotation.elements[0][0], */
+			/* 						  		  				params.rotation.elements[0][1], */
+			/* 						  		  				params.rotation.elements[0][2], */
+			/* 						  		  				params.rotation.elements[1][0], */
+			/* 						  		  				params.rotation.elements[1][1], */
+			/* 						  		  				params.rotation.elements[1][2], */
+			/* 						  		  				params.rotation.elements[2][0], */
+			/* 						  		  				params.rotation.elements[2][1], */
+			/* 						  		  				params.rotation.elements[2][2]); */
+			/* ImGui::End(); */
+	
 			ImGui::Render();
 
 			hr = command_allocators[backbuffer_index]->Reset();
