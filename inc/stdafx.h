@@ -52,5 +52,7 @@ D3D12_RECT						scissor_rect = {};
 ID3D12RootSignature				*root_signature;
 ID3D12Buffer					*vb;
 D3D12_VERTEX_BUFFER_VIEW		vb_view;
+ID3D12Buffer					*ib;
+D3D12_INDEX_BUFFER_VIEW			ib_view;
 ID3D12PipelineState				*pipeline;
 

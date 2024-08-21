@@ -259,12 +259,17 @@ main(void)
 	void		*ptr;
 	f32			vertices[] =
 	{
-		 0.0f,  0.5f, 0.5f,
-		 0.5f, -0.5f, 0.5f,
-		-0.5f, -0.5f, 0.5f,
+		 1.0f,  1.0f, 0.0f, 1.0f,
+         1.0f, -1.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 1.0f,
+        -1.0f,  1.0f, 0.0f, 1.0f,
 	};	
-
-
+	u32			indices[] =
+	{
+		0, 1, 2,
+		0, 2, 3
+	};
+	
 	hr = device->CreateCommittedResource(
 		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
 		D3D12_HEAP_FLAG_NONE,
@@ -273,13 +278,29 @@ main(void)
 		nullptr,
 		PPV_ARGS(&vb));
 
+	hr = device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
+		D3D12_HEAP_FLAG_NONE,
+		&CD3DX12_RESOURCE_DESC::Buffer(sizeof(indices)),
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		PPV_ARGS(&ib));
+
 	vb->Map(0, nullptr, &ptr);
 		CopyMemory(ptr, vertices, sizeof(vertices));
 	vb->Unmap(0, nullptr);
 
+	ib->Map(0, nullptr, &ptr);
+		CopyMemory(ptr, indices, sizeof(indices));
+	ib->Unmap(0, nullptr);
+
 	vb_view.BufferLocation = vb->GetGPUVirtualAddress();
 	vb_view.SizeInBytes = sizeof(vertices);
-	vb_view.StrideInBytes = 3 * sizeof(f32);
+	vb_view.StrideInBytes = 4 * sizeof(f32);
+
+	ib_view.BufferLocation = ib->GetGPUVirtualAddress();
+	ib_view.SizeInBytes = sizeof(indices);
+	ib_view.Format = DXGI_FORMAT_R32_UINT;
 
 	//////////////////////////////////////////////////////////////////////////
 	// Input layout
@@ -289,7 +310,7 @@ main(void)
 
 
 	element_desc[0].SemanticName = "POSITION";
-	element_desc[0].Format = DXGI_FORMAT_R32G32B32_FLOAT;
+	element_desc[0].Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	element_desc[0].InputSlot = 0;
 	element_desc[0].InputSlotClass = D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA;
 
@@ -354,7 +375,8 @@ main(void)
 			command_list->RSSetScissorRects(1, &scissor_rect);
 			command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			command_list->IASetVertexBuffers(0, 1, &vb_view);
-			command_list->DrawInstanced(3, 1, 0, 0);
+			command_list->IASetIndexBuffer(&ib_view);
+			command_list->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
 			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
