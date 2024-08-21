@@ -12,11 +12,11 @@ cl %CPP_FLAGS% %CPP_SRC% /link /LIBPATH:%MG_LIB% %CPP_LIBS%
 
 
 for %%f in (..\src\shaders\*.vs) do (
-    fxc /Zi /nologo /E:main /T:vs_5_0 %%f /Fo:%%~nf_vs.cso
+    dxc /Zi /nologo /E main /T vs_6_0 %%f /Fo %%~nf_vs.cso /Fd %%~nf_vs.pdb
 )
 
 for %%f in (..\src\shaders\*.ps) do (
-    fxc /Zi /nologo /E:main /T:ps_5_0 %%f /Fo:%%~nf_ps.cso
+    dxc /Zi /nologo /E main /T ps_6_0 %%f /Fo %%~nf_ps.cso /Fd %%~nf_ps.pdb
 )
 
 popd

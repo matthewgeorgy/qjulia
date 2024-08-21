@@ -49,7 +49,7 @@ main(ps_in input) : SV_TARGET
 	size = float2(width, height);
 	scale = min(size.x, size.y);
 	half = float2(0.5f, 0.5f);
-	position = (coord.xy - half * size) / scale * BOUNDING_RADIUS_2 * zoom;
+	position = (coord.xy - half * size) / scale * BOUNDING_RADIUS_2 * (1 / zoom);
 
   	light = float3(1.5f, 0.5f, 4.0f);
   	eye   = float3(0.0f, 0.0f, 4.0f);
