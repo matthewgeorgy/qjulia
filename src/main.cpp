@@ -163,7 +163,7 @@ main(void)
 	CD3DX12_CPU_DESCRIPTOR_HANDLE		dsv_handle;
 
 
-	dsv_descriptor_heap_desc.NumDescriptors = 3;
+	dsv_descriptor_heap_desc.NumDescriptors = FRAMEBUFFER_COUNT;
 	dsv_descriptor_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
 
 	DX_CHECK(device->CreateDescriptorHeap(&dsv_descriptor_heap_desc, IID_PPV_ARGS(&dsv_descriptor_heap)));
@@ -425,22 +425,6 @@ main(void)
             ImGui::End();
 
 			CopyMemory(params_ptrs[backbuffer_index], &params, sizeof(params));
-
-			/* params.rotation = trackball.GetRotationMatrix(); */
-			/* context->UpdateSubresource(params_buffer, 0, 0, &params, 0, 0); */
-			/* context->PSSetConstantBuffers(0, 1, &params_buffer); */
-
-			/* ImGui::Begin("Rotation matrix"); */
-			/* 	ImGui::Text("%f %f %f\n%f %f %f\n%f %f %f", params.rotation.elements[0][0], */
-			/* 						  		  				params.rotation.elements[0][1], */
-			/* 						  		  				params.rotation.elements[0][2], */
-			/* 						  		  				params.rotation.elements[1][0], */
-			/* 						  		  				params.rotation.elements[1][1], */
-			/* 						  		  				params.rotation.elements[1][2], */
-			/* 						  		  				params.rotation.elements[2][0], */
-			/* 						  		  				params.rotation.elements[2][1], */
-			/* 						  		  				params.rotation.elements[2][2]); */
-			/* ImGui::End(); */
 	
 			ImGui::Render();
 

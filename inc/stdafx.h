@@ -11,8 +11,8 @@
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx12.h>
 
-#define SCR_WIDTH				1024
-#define SCR_HEIGHT 				768
+#define SCR_WIDTH				1280
+#define SCR_HEIGHT 				960
 #define FRAMEBUFFER_COUNT		3
 
 #define PPV_ARGS		IID_PPV_ARGS
