@@ -340,6 +340,25 @@ main(void)
 	DX_CHECK(device->CreateGraphicsPipelineState(&pipeline_desc, PPV_ARGS(&pipeline)));
 
 	//////////////////////////////////////////////////////////////////////////
+	// ImGui init
+
+	D3D12_DESCRIPTOR_HEAP_DESC		imgui_heap_desc = {};
+	ID3D12DescriptorHeap			*imgui_heap;
+
+
+	imgui_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+	imgui_heap_desc.NumDescriptors = 1;
+	imgui_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+	DX_CHECK(device->CreateDescriptorHeap(&imgui_heap_desc, PPV_ARGS(&imgui_heap)));
+
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(hwnd);
+	ImGui_ImplDX12_Init(device, FRAMEBUFFER_COUNT, DXGI_FORMAT_R8G8B8A8_UNORM, imgui_heap,
+			imgui_heap->GetCPUDescriptorHandleForHeapStart(),
+			imgui_heap->GetGPUDescriptorHandleForHeapStart());
+
+	//////////////////////////////////////////////////////////////////////////
 	// Main loop
 
 	for (;;)
@@ -358,6 +377,17 @@ main(void)
 		{
 			const FLOAT clear_color[] = { 0.f, 0.2f, 0.4f, 1.f };
 			ID3D12CommandList *cmdlists[] = { command_list };
+
+			// ImGui
+			ImGui_ImplDX12_NewFrame();
+			ImGui_ImplWin32_NewFrame();
+			ImGui::NewFrame();
+
+			ImGui::Begin("blah");
+				ImGui::Text("blyat %f", clear_color[2]);
+			ImGui::End();
+
+			ImGui::Render();
 
 			hr = command_allocators[backbuffer_index]->Reset();
 			hr = command_list->Reset(command_allocators[backbuffer_index], pipeline);
@@ -378,6 +408,9 @@ main(void)
 			command_list->IASetIndexBuffer(&ib_view);
 			command_list->DrawIndexedInstanced(6, 1, 0, 0, 0);
 
+			command_list->SetDescriptorHeaps(1, &imgui_heap);
+			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), command_list);
+
 			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT));
 
 			command_list->Close();
@@ -391,6 +424,8 @@ main(void)
 	return (0);
 }
 
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 LRESULT CALLBACK
 wndproc(HWND hwnd,
 		UINT msg,
@@ -399,6 +434,11 @@ wndproc(HWND hwnd,
 {
 	LRESULT		result = 0;
 
+
+	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
+	{
+		return (result);
+	}
 
 	switch (msg)
 	{

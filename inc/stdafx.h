@@ -7,6 +7,9 @@
 #include <mg/mg.h>
 #include <stdio.h>
 #include <assert.h>
+#include <imgui.h>
+#include <imgui_impl_win32.h>
+#include <imgui_impl_dx12.h>
 
 #define SCR_WIDTH				1024
 #define SCR_HEIGHT 				768
