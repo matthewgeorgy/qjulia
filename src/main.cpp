@@ -1,6 +1,5 @@
 #include <stdafx.h>
 
-
 LRESULT CALLBACK wndproc(HWND, UINT, WPARAM, LPARAM);
 void move_to_next_frame();
 
@@ -393,7 +392,6 @@ main(void)
 	ImGui_ImplDX12_Init(device, FRAMEBUFFER_COUNT, DXGI_FORMAT_R8G8B8A8_UNORM, imgui_heap,
 			imgui_heap->GetCPUDescriptorHandleForHeapStart(),
 			imgui_heap->GetGPUDescriptorHandleForHeapStart());
-	ImGuiIO &io = ImGui::GetIO();
 
 	//////////////////////////////////////////////////////////////////////////
 	// Main loop
@@ -427,7 +425,6 @@ main(void)
 				ImGui::SliderFloat("Epsilon", &params.epsilon, 0.0001f, 0.01f, "%0.5f");
 				ImGui::SliderFloat("Zoom", &params.zoom, 0, 2, "%0.4f");
 				ImGui::SliderInt("Iterations", &params.iterations, 5, 25);
-				ImGui::Text("io.WantCaptureMouse: %d", io.WantCaptureMouse);
             ImGui::End();
 			ImGui::Render();
 
@@ -474,56 +471,6 @@ main(void)
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-#if 0
-LRESULT CALLBACK		
-wndproc(HWND hwnd, 
-		UINT msg, 
-		WPARAM wparam, 
-		LPARAM lparam)
-{
-	LRESULT		result = 0;
-
-
-	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wparam, lparam))
-	{
-		return (1);
-	}
-
-	switch (msg)
-	{
-		case WM_MOUSEMOVE:
-		{
-			ImGuiIO &io = ImGui::GetIO();
-			printf("%d\n", io.WantCaptureMouse);
-		} break;
-
-		case WM_KEYDOWN:
-		{
-			if (wparam == VK_ESCAPE)
-			{
-				PostQuitMessage(0);
-			}
-		} break;
-
-		case WM_CLOSE:
-		{
-			PostQuitMessage(0);
-		} break;
-
-		case WM_DESTROY:
-		{
-			PostQuitMessage(0);
-		} break;
-
-		default:
-		{
-			result = DefWindowProc(hwnd, msg, wparam, lparam);
-		} break;
-	}
-
-	return (result);
-}
-#else
 LRESULT CALLBACK
 wndproc(HWND hwnd,
         UINT msg,
@@ -595,7 +542,6 @@ wndproc(HWND hwnd,
 
     return (result);
 }
-#endif
 
 void
 move_to_next_frame()

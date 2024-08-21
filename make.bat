@@ -1,15 +1,15 @@
 @echo off
 
 set CPP_INC=%MG_INCLUDE%
-set CPP_FLAGS=/W4 /Zi /EHsc /wd4201 /wd4996 /wd4505 /MP /I %CPP_INC% /I ..\inc /wd4238
-set CPP_SRC=..\src\main.cpp
-set CPP_LIBS=d3d12.lib dxgi.lib d3dcompiler.lib user32.lib imgui_d3d12.lib
+set CPP_FLAGS=/W4 /Zi /EHsc /wd4201 /wd4996 /wd4505 /MP /I %CPP_INC% /I ..\inc /I ..\inc\imgui /wd4238 /Fe:"main"
+set CPP_SRC=..\src\*.cpp
+set CPP_LIBS=d3d12.lib dxgi.lib d3dcompiler.lib user32.lib
 
+rmdir bin
 mkdir bin
 pushd bin\
 
 cl %CPP_FLAGS% %CPP_SRC% /link /LIBPATH:%MG_LIB% %CPP_LIBS%
-
 
 for %%f in (..\src\shaders\*.vs) do (
     dxc /Zi /nologo /E main /T vs_6_0 %%f /Fo %%~nf_vs.cso /Fd %%~nf_vs.pdb
