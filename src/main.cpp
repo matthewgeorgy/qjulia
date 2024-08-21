@@ -456,6 +456,7 @@ main(void)
 			command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
 			command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 			command_list->SetGraphicsRootSignature(root_signature);
+			command_list->SetGraphicsRootConstantBufferView(0, params_buffer[backbuffer_index]->GetGPUVirtualAddress());
 			command_list->RSSetViewports(1, &viewport);
 			command_list->RSSetScissorRects(1, &scissor_rect);
 			command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
