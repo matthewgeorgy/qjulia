@@ -530,6 +530,13 @@ main(void)
 	//////////////////////////////////////////////////////////////////////////
 	// Main loop
 
+	D3D12_GPU_DESCRIPTOR_HANDLE		srv_handle,
+									uav_handle;
+
+
+	srv_handle = descriptor_heap->GetGPUDescriptorHandleForHeapStart();
+	uav_handle.ptr = srv_handle.ptr + srv_descriptor_size;
+
 	for (;;)
 	{
 		if (PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
@@ -546,6 +553,7 @@ main(void)
 		{
 			const FLOAT clear_color[] = { 0.f, 0.2f, 0.4f, 1.f };
 			ID3D12CommandList *cmdlists[] = { command_list };
+			ID3D12DescriptorHeap *descriptor_heaps[] = { descriptor_heap };
 
 			// ImGui
 			ImGui_ImplDX12_NewFrame();
@@ -566,19 +574,30 @@ main(void)
 
 			// -------- Update pipeline -------- //
 			hr = command_allocators[backbuffer_index]->Reset();
-			hr = command_list->Reset(command_allocators[backbuffer_index], gfx_pipeline);
+			hr = command_list->Reset(command_allocators[backbuffer_index], nullptr);
 
 			rtv_handle.ptr = rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * rtv_descriptor_size;
 			dsv_handle.ptr = dsv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * dsv_descriptor_size;
 
+			// -------- Compute pass -------- //
+			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+			command_list->SetPipelineState(cs_pipeline);
+			command_list->SetComputeRootSignature(cs_signature);
+			command_list->SetDescriptorHeaps(1, descriptor_heaps);
+			command_list->SetComputeRootConstantBufferView(0, params_buffer[backbuffer_index]->GetGPUVirtualAddress());
+			command_list->SetComputeRootDescriptorTable(1, uav_handle);
+			command_list->Dispatch(SCR_WIDTH / 16, SCR_HEIGHT / 16, 1);
+			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+			
+			// -------- Draw -------- //
 			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));
 			command_list->OMSetRenderTargets(1, &rtv_handle, FALSE, &dsv_handle);
 			command_list->ClearRenderTargetView(rtv_handle, clear_color, 0, nullptr);
 			command_list->ClearDepthStencilView(dsv_handle, D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
 
-			// -------- Draw -------- //
+			command_list->SetPipelineState(gfx_pipeline);
 			command_list->SetGraphicsRootSignature(gfx_signature);
-			/* command_list->SetGraphicsRootConstantBufferView(0, params_buffer[backbuffer_index]->GetGPUVirtualAddress()); */
+			command_list->SetGraphicsRootDescriptorTable(0, srv_handle);
 			command_list->RSSetViewports(1, &viewport);
 			command_list->RSSetScissorRects(1, &scissor_rect);
 			command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);

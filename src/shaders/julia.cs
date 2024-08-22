@@ -26,7 +26,7 @@ float3		phong(float3 light_pos, float3 eye, float3 p, float3 n);
 float3		intersect_sphere(float3 ro, float3 rd);
 float4		qjulia(float3 ro, float3 rd, quat_t mu, float eps, float3 eye, float3 light_pos, bool render_shadows, uint max_iters);
 
-[numthreads(1, 1, 1)]
+[numthreads(16, 16, 1)]
 void
 main(uint3 thread_id : SV_DispatchThreadID)
 {
