@@ -272,12 +272,21 @@ main(void)
 	// Graphics signature
 	{
 		D3D12_ROOT_PARAMETER			root_parameters[1] = {};
-		D3D12_ROOT_DESCRIPTOR			params_descriptor = {};
+		D3D12_DESCRIPTOR_RANGE			descriptor_ranges[1] = {};
+		D3D12_ROOT_DESCRIPTOR_TABLE		descriptor_table = {};
 
-		params_descriptor.ShaderRegister = 0;
+		descriptor_ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		descriptor_ranges[0].NumDescriptors = 1;
+		descriptor_ranges[0].BaseShaderRegister = 0;
+		descriptor_ranges[0].RegisterSpace = 0;
+		descriptor_ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-		root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		root_parameters[0].Descriptor = params_descriptor;
+		descriptor_table.NumDescriptorRanges = _countof(descriptor_ranges);
+		descriptor_table.pDescriptorRanges = descriptor_ranges;
+
+		root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		root_parameters[0].DescriptorTable = descriptor_table;
+		root_parameters[0].ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 		gfx_signature_desc.NumParameters = _countof(root_parameters);
 		gfx_signature_desc.pParameters = root_parameters;
@@ -287,6 +296,39 @@ main(void)
 
 		DX_CHECK(D3D12SerializeRootSignature(&gfx_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));
 		DX_CHECK(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), PPV_ARGS(&gfx_signature)));
+	}
+
+	// Compute signature
+	{
+		D3D12_ROOT_PARAMETER			root_parameters[2] = {};
+		D3D12_ROOT_DESCRIPTOR			root_descriptor = {};
+		D3D12_DESCRIPTOR_RANGE			descriptor_ranges[1] = {};
+		D3D12_ROOT_DESCRIPTOR_TABLE		descriptor_table = {};
+
+		root_descriptor.ShaderRegister = 0;
+		root_descriptor.RegisterSpace = 0;
+
+		descriptor_ranges[0].RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		descriptor_ranges[0].NumDescriptors = 1;
+		descriptor_ranges[0].BaseShaderRegister = 0;
+		descriptor_ranges[0].RegisterSpace = 0;
+		descriptor_ranges[0].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+		descriptor_table.NumDescriptorRanges = _countof(descriptor_ranges);
+		descriptor_table.pDescriptorRanges = descriptor_ranges;
+
+		root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		root_parameters[0].Descriptor = root_descriptor;
+		root_parameters[1].ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		root_parameters[1].DescriptorTable = descriptor_table;
+		root_parameters[1].ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+		cs_signature_desc.NumParameters = _countof(root_parameters);
+		cs_signature_desc.pParameters = root_parameters;
+		cs_signature_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+		DX_CHECK(D3D12SerializeRootSignature(&cs_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));
+		DX_CHECK(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), PPV_ARGS(&cs_signature)));
 	}
 
 	//////////////////////////////////////////////////////////////////////////
@@ -416,6 +458,7 @@ main(void)
 	// Pipeline setup
 
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC		gfx_pipeline_desc = {};
+	D3D12_COMPUTE_PIPELINE_STATE_DESC		cs_pipeline_desc = {};
 
 
 	gfx_pipeline_desc.InputLayout = input_layout;
@@ -432,7 +475,11 @@ main(void)
 	gfx_pipeline_desc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	gfx_pipeline_desc.NumRenderTargets = 1;
 
+	cs_pipeline_desc.pRootSignature = cs_signature;
+	cs_pipeline_desc.CS = cs_code;
+
 	DX_CHECK(device->CreateGraphicsPipelineState(&gfx_pipeline_desc, PPV_ARGS(&gfx_pipeline)));
+	DX_CHECK(device->CreateComputePipelineState(&cs_pipeline_desc, PPV_ARGS(&cs_pipeline)));
 
 	//////////////////////////////////////////////////////////////////////////
 	// Params buffer
@@ -531,7 +578,7 @@ main(void)
 
 			// -------- Draw -------- //
 			command_list->SetGraphicsRootSignature(gfx_signature);
-			command_list->SetGraphicsRootConstantBufferView(0, params_buffer[backbuffer_index]->GetGPUVirtualAddress());
+			/* command_list->SetGraphicsRootConstantBufferView(0, params_buffer[backbuffer_index]->GetGPUVirtualAddress()); */
 			command_list->RSSetViewports(1, &viewport);
 			command_list->RSSetScissorRects(1, &scissor_rect);
 			command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
