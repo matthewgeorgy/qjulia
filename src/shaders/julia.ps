@@ -18,7 +18,7 @@ cbuffer params : register(b0)
 	float		epsilon;
 	float		zoom;
 	int			iterations;
-	float4x4	rotation;
+	row_major float4x4	rotation;
 };
 
 quat_t		quat_mul(quat_t q1, quat_t q2);
@@ -55,9 +55,9 @@ main(ps_in input) : SV_TARGET
   	eye   = float4(0.0f, 0.0f, 4.0f, 1.0f);
   	ray   = float4(position.x, position.y, 0.0f, 1.0f);
 
-	light = mul(light, rotation);
-	eye = mul(eye, rotation);
-	ray = mul(ray, rotation);
+	light = mul(rotation, light);
+	eye = mul(rotation, eye);
+	ray = mul(rotation, ray);
 
 	ro = eye.xyz;
 	rd = ray.xyz - ro;

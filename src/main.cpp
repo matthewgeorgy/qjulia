@@ -418,12 +418,11 @@ main(void)
 			ImGui_ImplWin32_NewFrame();
 			ImGui::NewFrame();
 
-			ImGui::ShowDemoWindow();
 			ImGui::Begin("Controls");
 				ImGui::SliderFloat4("Mu", &params.mu.x, -1, 1, "%0.5f");
 				ImGui::Checkbox("Self Shadow", (bool *)&params.self_shadow);
 				ImGui::SliderFloat("Epsilon", &params.epsilon, 0.0001f, 0.01f, "%0.5f");
-				ImGui::SliderFloat("Zoom", &params.zoom, 0, 2, "%0.4f");
+				/* ImGui::SliderFloat("Zoom", &params.zoom, 0, 2, "%0.4f"); */
 				ImGui::SliderInt("Iterations", &params.iterations, 5, 25);
             ImGui::End();
 			ImGui::Render();
@@ -513,6 +512,20 @@ wndproc(HWND hwnd,
 					trackball.DragEnd();
 					lbdown = FALSE;
 				}
+			}
+		} break;
+
+		case WM_MOUSEWHEEL:
+		{
+			s16 wheel_delta = HIWORD(wparam);
+
+			if (wheel_delta > 0)
+			{
+				params.zoom *= 1.1f;
+			}
+			else
+			{
+				params.zoom /= 1.1f;
 			}
 		} break;
 
