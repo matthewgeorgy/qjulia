@@ -4,10 +4,7 @@
 
 typedef float4 quat_t;
 
-struct ps_in
-{
-	float4 pos : SV_POSITION;
-};
+RWTexture2D<float4> output_tex : register(u0);
 
 cbuffer params : register(b0)
 {
@@ -23,15 +20,15 @@ cbuffer params : register(b0)
 
 quat_t		quat_mul(quat_t q1, quat_t q2);
 quat_t		quat_sq(quat_t q);
-/* void		iterate_intersect(inout quat_t q, inout quat_t qp, quat_t c, uint max_iters); */
 float3		normal_estimate(float3 p, quat_t c, uint max_iters);
 float		intersect_julia(inout float3 ro, inout float3 rd, quat_t c, uint max_iters, float eps);
 float3		phong(float3 light_pos, float3 eye, float3 p, float3 n);
 float3		intersect_sphere(float3 ro, float3 rd);
 float4		qjulia(float3 ro, float3 rd, quat_t mu, float eps, float3 eye, float3 light_pos, bool render_shadows, uint max_iters);
 
-float4
-main(ps_in input) : SV_TARGET
+[numthreads(1, 1, 1)]
+void
+main(uint3 thread_id : SV_DispatchThreadID)
 {
 	float4		coord;
 	float2		size,
@@ -45,7 +42,7 @@ main(ps_in input) : SV_TARGET
 				rd;
 
 
-	coord = float4((float)input.pos.x, (float)input.pos.y, 0, 1);
+	coord = float4((float)thread_id.x, (float)thread_id.y, 0, 1);
 	size = float2(width, height);
 	scale = min(size.x, size.y);
 	half = float2(0.5f, 0.5f);
@@ -64,7 +61,7 @@ main(ps_in input) : SV_TARGET
 
 	float4 color = qjulia(ro, rd, mu, epsilon, eye.xyz, light.xyz, self_shadow, iterations);
 
-	return (color);
+	output_tex[thread_id.xy] = color;
 }
 
 quat_t
@@ -91,24 +88,6 @@ quat_sq(quat_t q)
 
 	return (r);
 }
-
-/* void */		
-/* iterate_intersect(inout quat_t q, */ 
-/* 				  inout quat_t qp, */ 
-/* 				  quat_t c, */ 
-/* 				  uint max_iters) */
-/* { */
-/* 	for (uint i = 0; i < max_iters; i++) */
-/* 	{ */
-/* 		qp = 2.0f * quat_mul(q, qp); */
-/* 		q = quat_sq(q) + c; */
-
-/* 		if (dot(q, q) > ESCAPE_THRESHOLD) */
-/* 		{ */
-/* 			break; */
-/* 		} */
-/* 	} */
-/* } */
 
 float3		
 normal_estimate(float3 p, 
@@ -166,7 +145,6 @@ intersect_julia(inout float3 ro,
 		float zd = 0;
 		uint count = 0;
 
-		/* iterate_intersect(z, zp, c, max_iters); */
 		// NOTE(matthew): we inline this because otherwise it would hang.
 		while (zd < ESCAPE_THRESHOLD && count < max_iters)
 		{

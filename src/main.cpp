@@ -227,18 +227,23 @@ main(void)
 	// Shader setup
 
 	D3D12_SHADER_BYTECODE		vs_code,
-								ps_code;
-	ID3DBlob					*vs_blob;
-	ID3DBlob					*ps_blob;
+								ps_code,
+								cs_code;
+	ID3DBlob					*vs_blob,
+								*ps_blob,
+								*cs_blob;
 
 
 	hr = D3DReadFileToBlob(L"bin/julia_vs.cso", &vs_blob);
 	hr = D3DReadFileToBlob(L"bin/julia_ps.cso", &ps_blob);
+	hr = D3DReadFileToBlob(L"bin/julia_cs.cso", &cs_blob);
 
 	vs_code.BytecodeLength = vs_blob->GetBufferSize();
 	vs_code.pShaderBytecode = vs_blob->GetBufferPointer();
 	ps_code.BytecodeLength = ps_blob->GetBufferSize();
 	ps_code.pShaderBytecode = ps_blob->GetBufferPointer();
+	cs_code.BytecodeLength = cs_blob->GetBufferSize();
+	cs_code.pShaderBytecode = cs_blob->GetBufferPointer();
 
 	//////////////////////////////////////////////////////////////////////////
 	// Static sampler

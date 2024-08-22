@@ -18,6 +18,10 @@ for %%f in (..\src\shaders\*.ps) do (
     dxc /Zi /nologo /E main /T ps_6_0 %%f /Fo %%~nf_ps.cso /Fd %%~nf_ps.pdb
 )
 
+for %%f in (..\src\shaders\*.cs) do (
+    dxc /Zi /nologo /E main /T cs_6_0 %%f /Fo %%~nf_cs.cso /Fd %%~nf_cs.pdb
+)
+
 popd
 
 
