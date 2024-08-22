@@ -1,11 +1,11 @@
 #include <windows.h>
 #include <windowsx.h>
-#include <d3dx12.h>
+#include "d3dx12.h"
 #include <d3dcompiler.h>
 #include <dxgi1_5.h>
 #define MG_IMPL
 #define MG_USE_WINDOWS
-#include <mg/mg.h>
+#include "mg/mg.h"
 #include <stdio.h>
 #include <assert.h>
 #include "imgui/imgui.h"
