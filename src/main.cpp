@@ -265,24 +265,29 @@ main(void)
 	// Root signature
 
 	ID3DBlob						*signature;
-	D3D12_ROOT_PARAMETER			root_parameters[1] = {};
-	D3D12_ROOT_DESCRIPTOR			params_descriptor = {};
-	D3D12_ROOT_SIGNATURE_DESC		gfx_signature_desc = {};
+	D3D12_ROOT_SIGNATURE_DESC		gfx_signature_desc = {},
+									cs_signature_desc = {};
 
 
-	params_descriptor.ShaderRegister = 0;
+	// Graphics signature
+	{
+		D3D12_ROOT_PARAMETER			root_parameters[1] = {};
+		D3D12_ROOT_DESCRIPTOR			params_descriptor = {};
 
-	root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-	root_parameters[0].Descriptor = params_descriptor;
+		params_descriptor.ShaderRegister = 0;
 
-	gfx_signature_desc.NumParameters = _countof(root_parameters);
-	gfx_signature_desc.pParameters = root_parameters;
-	gfx_signature_desc.NumStaticSamplers = 1;
-	gfx_signature_desc.pStaticSamplers = &sampler;
-	gfx_signature_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		root_parameters[0].ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		root_parameters[0].Descriptor = params_descriptor;
 
-	DX_CHECK(D3D12SerializeRootSignature(&gfx_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));
-	DX_CHECK(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), PPV_ARGS(&gfx_signature)));
+		gfx_signature_desc.NumParameters = _countof(root_parameters);
+		gfx_signature_desc.pParameters = root_parameters;
+		gfx_signature_desc.NumStaticSamplers = 1;
+		gfx_signature_desc.pStaticSamplers = &sampler;
+		gfx_signature_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+
+		DX_CHECK(D3D12SerializeRootSignature(&gfx_signature_desc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, nullptr));
+		DX_CHECK(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), PPV_ARGS(&gfx_signature)));
+	}
 
 	//////////////////////////////////////////////////////////////////////////
 	// Vertex buffers
@@ -353,6 +358,59 @@ main(void)
 
 	input_layout.NumElements = _countof(element_desc);
 	input_layout.pInputElementDescs = element_desc;
+
+	//////////////////////////////////////////////////////////////////////////
+	// Texture + Descriptor heap
+
+	ID3D12Texture2D							*texture;
+	D3D12_RESOURCE_DESC						texture_desc = {};
+	D3D12_SHADER_RESOURCE_VIEW_DESC			srv_desc = {};
+	D3D12_UNORDERED_ACCESS_VIEW_DESC		uav_desc = {};
+
+
+	texture_desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+	texture_desc.Alignment = 0;
+	texture_desc.Width = SCR_WIDTH;
+	texture_desc.Height = SCR_HEIGHT;
+	texture_desc.DepthOrArraySize = 1;
+	texture_desc.MipLevels = 1;
+	texture_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	texture_desc.SampleDesc = { 1, 0 };
+	texture_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+	texture_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
+
+	device->CreateCommittedResource(
+		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+		D3D12_HEAP_FLAG_NONE,
+		&texture_desc,
+		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+		nullptr,
+		PPV_ARGS(&texture));
+
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
+
+		heap_desc.NumDescriptors = 2; // two descriptors, one for the texture SRV and one for the UAV
+		heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+		heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+
+		DX_CHECK(device->CreateDescriptorHeap(&heap_desc, PPV_ARGS(&descriptor_heap)));
+	}
+
+	srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srv_desc.Format = texture_desc.Format;
+	srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srv_desc.Texture2D.MipLevels = 1;
+
+	uav_desc.Format = texture_desc.Format;
+	uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+	D3D12_CPU_DESCRIPTOR_HANDLE srv_cpu_handle = descriptor_heap->GetCPUDescriptorHandleForHeapStart(),
+								uav_cpu_handle;
+
+	device->CreateShaderResourceView(texture, &srv_desc, srv_cpu_handle);
+	uav_cpu_handle.ptr = srv_cpu_handle.ptr + srv_descriptor_size;
+	device->CreateUnorderedAccessView(texture, nullptr, &uav_desc, uav_cpu_handle);
 
 	//////////////////////////////////////////////////////////////////////////
 	// Pipeline setup

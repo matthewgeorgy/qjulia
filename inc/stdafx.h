@@ -68,8 +68,11 @@ UINT							backbuffer_index;
 D3D12_VIEWPORT					viewport = {};
 D3D12_RECT						scissor_rect = {};
 
-ID3D12RootSignature				*gfx_signature;
-ID3D12PipelineState				*gfx_pipeline;
+ID3D12RootSignature				*gfx_signature,
+								*cs_signature;
+ID3D12PipelineState				*gfx_pipeline,
+								*cs_pipeline;
+ID3D12DescriptorHeap			*descriptor_heap;
 
 ID3D12Buffer					*vb;
 D3D12_VERTEX_BUFFER_VIEW		vb_view;
