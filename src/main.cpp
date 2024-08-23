@@ -671,12 +671,6 @@ main(void)
 		}
 	}
 
-	ID3D12DebugDevice *dbg_device;
-
-	device->QueryInterface(PPV_ARGS(&dbg_device));
-
-	dbg_device->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY);
-
 	return (0);
 }
 
