@@ -273,9 +273,9 @@ main(void)
 								*cs_blob;
 
 
-	hr = D3DReadFileToBlob(L"bin/julia_vs.cso", &vs_blob);
-	hr = D3DReadFileToBlob(L"bin/julia_ps.cso", &ps_blob);
-	hr = D3DReadFileToBlob(L"bin/julia_cs.cso", &cs_blob);
+	hr = D3DReadFileToBlob(L"julia_vs.cso", &vs_blob);
+	hr = D3DReadFileToBlob(L"julia_ps.cso", &ps_blob);
+	hr = D3DReadFileToBlob(L"julia_cs.cso", &cs_blob);
 
 	vs_code.BytecodeLength = vs_blob->GetBufferSize();
 	vs_code.pShaderBytecode = vs_blob->GetBufferPointer();

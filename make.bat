@@ -11,15 +11,15 @@ pushd bin\
 cl %CPP_FLAGS% %CPP_SRC% /link /LIBPATH:%MG_LIB% %CPP_LIBS%
 
 for %%f in (..\src\shaders\*.vs) do (
-    dxc /Zi /nologo /E main /T vs_6_0 %%f /Fo %%~nf_vs.cso /Fd %%~nf_vs.pdb
+    dxc /Zi /nologo /E main /T vs_6_0 /Fo %%~nf_vs.cso /Fd %%~nf_vs.pdb %%f
 )
 
 for %%f in (..\src\shaders\*.ps) do (
-    dxc /Zi /nologo /E main /T ps_6_0 %%f /Fo %%~nf_ps.cso /Fd %%~nf_ps.pdb
+    dxc /Zi /nologo /E main /T ps_6_0 /Fo %%~nf_ps.cso /Fd %%~nf_ps.pdb %%f
 )
 
 for %%f in (..\src\shaders\*.cs) do (
-    dxc /Zi /nologo /E main /T cs_6_0 %%f /Fo %%~nf_cs.cso /Fd %%~nf_cs.pdb
+    dxc /Zi /nologo /E main /T cs_6_0 /Fo %%~nf_cs.cso /Fd %%~nf_cs.pdb %%f
 )
 
 popd
