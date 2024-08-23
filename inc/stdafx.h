@@ -82,5 +82,5 @@ D3D12_INDEX_BUFFER_VIEW			ib_view;
 qjulia_params_t					params;
 ID3D12Buffer					*params_buffer[FRAMEBUFFER_COUNT];
 BYTE							*params_ptrs[FRAMEBUFFER_COUNT];
-TrackBall						trackball;
+trackball_t						trackball;
 

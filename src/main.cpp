@@ -618,12 +618,11 @@ main(void)
 				ImGui::SliderFloat4("Mu", &params.mu.x, -1, 1, "%0.5f");
 				ImGui::Checkbox("Self Shadow", (bool *)&params.self_shadow);
 				ImGui::SliderFloat("Epsilon", &params.epsilon, 0.0001f, 0.01f, "%0.5f");
-				/* ImGui::SliderFloat("Zoom", &params.zoom, 0, 2, "%0.4f"); */
 				ImGui::SliderInt("Iterations", &params.iterations, 5, 25);
             ImGui::End();
 			ImGui::Render();
 
-			params.rotation = trackball.GetRotationMatrix();
+			params.rotation = trackball.get_rotation_matrix();
 			CopyMemory(params_ptrs[backbuffer_index], &params, sizeof(params));
 
 			// -------- Update pipeline -------- //
@@ -713,16 +712,16 @@ wndproc(HWND hwnd,
 
 				if (msg == WM_LBUTTONDOWN && !lbdown)
 				{
-					trackball.DragStart(x, y, SCR_WIDTH, SCR_HEIGHT);
+					trackball.drag_start(x, y, SCR_WIDTH, SCR_HEIGHT);
 					lbdown = TRUE;
 				}
 				if (msg == WM_MOUSEMOVE && lbdown)
 				{
-					trackball.DragMove(x, y, SCR_WIDTH, SCR_HEIGHT);
+					trackball.drag_move(x, y, SCR_WIDTH, SCR_HEIGHT);
 				}
 				if (msg == WM_LBUTTONUP)
 				{
-					trackball.DragEnd();
+					trackball.drag_end();
 					lbdown = FALSE;
 				}
 			}
