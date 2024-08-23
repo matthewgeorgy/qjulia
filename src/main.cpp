@@ -86,6 +86,37 @@ main(void)
 	}
 
 	//////////////////////////////////////////////////////////////////////////
+    // Debug Info Queue
+
+	ID3D12InfoQueue				*info_queue;
+	D3D12_INFO_QUEUE_FILTER		new_filter = {};
+	D3D12_MESSAGE_SEVERITY		severities[] =
+	{
+            D3D12_MESSAGE_SEVERITY_INFO
+	};
+	D3D12_MESSAGE_ID 			deny_ids[] =
+	{
+		D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+		D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,                      
+		D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE,                    
+	};
+
+
+	hr = device->QueryInterface(IID_PPV_ARGS(&info_queue));
+
+	info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+   	info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+   	info_queue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+
+	// Suppress individual messages by their ID
+	new_filter.DenyList.NumSeverities = _countof(severities);
+	new_filter.DenyList.pSeverityList = severities;
+	new_filter.DenyList.NumIDs = _countof(deny_ids);
+	new_filter.DenyList.pIDList = deny_ids;
+
+    DX_CHECK(info_queue->PushStorageFilter(&new_filter));
+
+	//////////////////////////////////////////////////////////////////////////
 	// Command queue
 
 	D3D12_COMMAND_QUEUE_DESC		command_queue_desc = {};
@@ -153,6 +184,10 @@ main(void)
 		rtv_handle.Offset(rtv_descriptor_size);
 	}
 
+	backbuffers[0]->SetName(L"Backbuffer 0");
+	backbuffers[1]->SetName(L"Backbuffer 1");
+	backbuffers[2]->SetName(L"Backbuffer 2");
+
     //////////////////////////////////////////////////////////////////////////
     // Depth/stencil buffer
 
@@ -190,6 +225,10 @@ main(void)
 		device->CreateDepthStencilView(depth_buffers[i], &dsv_desc, dsv_handle);
 		dsv_handle.Offset(dsv_descriptor_size);
 	}
+
+	depth_buffers[0]->SetName(L"Depth buffer 0");
+	depth_buffers[1]->SetName(L"Depth buffer 1");
+	depth_buffers[2]->SetName(L"Depth buffer 2");
 
     //////////////////////////////////////////////////////////////////////////
     // Command allocator + list
@@ -331,6 +370,9 @@ main(void)
 		DX_CHECK(device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), PPV_ARGS(&cs_signature)));
 	}
 
+	gfx_signature->SetName(L"Gfx signature");
+	cs_signature->SetName(L"CS signature");
+
 	//////////////////////////////////////////////////////////////////////////
 	// Vertex buffers
 
@@ -381,6 +423,9 @@ main(void)
 	ib_view.SizeInBytes = sizeof(indices);
 	ib_view.Format = DXGI_FORMAT_R32_UINT;
 
+	vb->SetName(L"Vertex buffer");
+	ib->SetName(L"Index buffer");
+
 	//////////////////////////////////////////////////////////////////////////
 	// Input layout
 
@@ -428,6 +473,8 @@ main(void)
 		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
 		nullptr,
 		PPV_ARGS(&texture));
+
+	texture->SetName(L"Texture");
 
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
@@ -481,6 +528,9 @@ main(void)
 	DX_CHECK(device->CreateGraphicsPipelineState(&gfx_pipeline_desc, PPV_ARGS(&gfx_pipeline)));
 	DX_CHECK(device->CreateComputePipelineState(&cs_pipeline_desc, PPV_ARGS(&cs_pipeline)));
 
+	gfx_pipeline->SetName(L"Gfx pipeline");
+	cs_pipeline->SetName(L"CS pipeline");
+
 	//////////////////////////////////////////////////////////////////////////
 	// Params buffer
 
@@ -496,6 +546,10 @@ main(void)
 
 		hr = params_buffer[i]->Map(0, nullptr, (void **)&params_ptrs[i]);
 	}
+
+	params_buffer[0]->SetName(L"Params 0");
+	params_buffer[1]->SetName(L"Params 1");
+	params_buffer[2]->SetName(L"Params 2");
 
 	params.mu = vec4(-0.278f, -0.479f, -0.231f, 0.235f);
 	params.width = SCR_WIDTH;
@@ -617,6 +671,12 @@ main(void)
 			move_to_next_frame();
 		}
 	}
+
+	ID3D12DebugDevice *dbg_device;
+
+	device->QueryInterface(PPV_ARGS(&dbg_device));
+
+	dbg_device->ReportLiveDeviceObjects(D3D12_RLDO_SUMMARY);
 
 	return (0);
 }
