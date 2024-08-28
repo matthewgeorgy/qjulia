@@ -13,6 +13,7 @@ main(void)
 	ATOM			atom;
 	RECT			wnddim = { 0 , 0, SCR_WIDTH, SCR_HEIGHT };
 	INT				window_width, window_height;
+	DWORD			window_style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
 	HWND			hwnd;
 	MSG				msg;
 
@@ -30,11 +31,11 @@ main(void)
 		return (-1);
 	}
 
-	AdjustWindowRect(&wnddim, WS_OVERLAPPEDWINDOW, FALSE);
+	AdjustWindowRect(&wnddim, window_style, FALSE);
 	window_width = wnddim.right - wnddim.left;
 	window_height = wnddim.bottom - wnddim.top;
 
-	hwnd = CreateWindowEx(0, wndclass.lpszClassName, "qjulia", WS_OVERLAPPEDWINDOW,
+	hwnd = CreateWindowEx(0, wndclass.lpszClassName, "qjulia", window_style,
 		CW_USEDEFAULT, CW_USEDEFAULT, window_width, window_height,
 		NULL, NULL, wndclass.hInstance, NULL);
 	if (!hwnd)
@@ -449,7 +450,6 @@ main(void)
 	//////////////////////////////////////////////////////////////////////////
 	// Texture + Descriptor heap
 
-	ID3D12Texture2D							*texture;
 	D3D12_RESOURCE_DESC						texture_desc = {};
 	D3D12_SHADER_RESOURCE_VIEW_DESC			srv_desc = {};
 	D3D12_UNORDERED_ACCESS_VIEW_DESC		uav_desc = {};
@@ -466,20 +466,25 @@ main(void)
 	texture_desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
 	texture_desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
-	device->CreateCommittedResource(
-		&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-		D3D12_HEAP_FLAG_NONE,
-		&texture_desc,
-		D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
-		nullptr,
-		PPV_ARGS(&texture));
+	for (u32 i = 0; i < FRAMEBUFFER_COUNT; i++)
+	{
+		device->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&texture_desc,
+			D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+			nullptr,
+			PPV_ARGS(&texture[i]));
+	}
 
-	texture->SetName(L"Texture");
+	texture[0]->SetName(L"Texture 0");
+	texture[1]->SetName(L"Texture 1");
+	texture[2]->SetName(L"Texture 2");
 
 	{
 		D3D12_DESCRIPTOR_HEAP_DESC heap_desc = {};
 
-		heap_desc.NumDescriptors = 2; // two descriptors, one for the texture SRV and one for the UAV
+		heap_desc.NumDescriptors = 6; // 6 descriptors, 3 for the SRVs and 3 for the UAVs
 		heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 
@@ -494,12 +499,15 @@ main(void)
 	uav_desc.Format = texture_desc.Format;
 	uav_desc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
-	D3D12_CPU_DESCRIPTOR_HANDLE srv_cpu_handle = descriptor_heap->GetCPUDescriptorHandleForHeapStart(),
-								uav_cpu_handle;
+	CD3DX12_CPU_DESCRIPTOR_HANDLE heap_handle(descriptor_heap->GetCPUDescriptorHandleForHeapStart());
 
-	device->CreateShaderResourceView(texture, &srv_desc, srv_cpu_handle);
-	uav_cpu_handle.ptr = srv_cpu_handle.ptr + srv_descriptor_size;
-	device->CreateUnorderedAccessView(texture, nullptr, &uav_desc, uav_cpu_handle);
+	for (u32 i = 0; i < FRAMEBUFFER_COUNT; i++)
+	{
+		device->CreateShaderResourceView(texture[i], &srv_desc, heap_handle);
+		heap_handle.Offset(srv_descriptor_size);
+		device->CreateUnorderedAccessView(texture[i], nullptr, &uav_desc, heap_handle);
+		heap_handle.Offset(uav_descriptor_size);
+	}
 
 	//////////////////////////////////////////////////////////////////////////
 	// Pipeline setup
@@ -632,15 +640,18 @@ main(void)
 			rtv_handle.ptr = rtv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * rtv_descriptor_size;
 			dsv_handle.ptr = dsv_descriptor_heap->GetCPUDescriptorHandleForHeapStart().ptr + backbuffer_index * dsv_descriptor_size;
 
+			srv_handle.ptr = descriptor_heap->GetGPUDescriptorHandleForHeapStart().ptr + backbuffer_index * srv_descriptor_size;
+			uav_handle.ptr = descriptor_heap->GetGPUDescriptorHandleForHeapStart().ptr + (backbuffer_index + 1) * uav_descriptor_size;
+
 			// -------- Compute pass -------- //
-			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
+			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture[backbuffer_index], D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS));
 			command_list->SetPipelineState(cs_pipeline);
 			command_list->SetComputeRootSignature(cs_signature);
 			command_list->SetDescriptorHeaps(1, descriptor_heaps);
 			command_list->SetComputeRootConstantBufferView(0, params_buffer[backbuffer_index]->GetGPUVirtualAddress());
 			command_list->SetComputeRootDescriptorTable(1, uav_handle);
 			command_list->Dispatch(SCR_WIDTH / 16, SCR_HEIGHT / 16, 1);
-			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
+			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(texture[backbuffer_index], D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE));
 			
 			// -------- Draw -------- //
 			command_list->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(backbuffers[backbuffer_index], D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET));

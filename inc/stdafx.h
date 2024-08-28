@@ -78,6 +78,7 @@ ID3D12Buffer					*vb;
 D3D12_VERTEX_BUFFER_VIEW		vb_view;
 ID3D12Buffer					*ib;
 D3D12_INDEX_BUFFER_VIEW			ib_view;
+ID3D12Texture2D					*texture[FRAMEBUFFER_COUNT];
 
 qjulia_params_t					params;
 ID3D12Buffer					*params_buffer[FRAMEBUFFER_COUNT];
